@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kod Akademi | Premium Eğitim Platformu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; scroll-behavior: smooth; background-color: #f8fafc; }
+        .glass { backdrop-filter: blur(12px); background: rgba(255, 255, 255, 0.9); }
+        .course-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .course-card:hover { transform: translateY(-5px); shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); }
+        .lock-overlay { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4px); position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 2rem; }
+        pre { background: #1e293b; color: #e2e8f0; padding: 1.5rem; border-radius: 1rem; font-family: 'Fira Code', monospace; font-size: 0.85rem; overflow-x: auto; border: 1px solid #334155; }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script>
+        // 1. GENİŞLETİLMİŞ MAKALE VERİTABANI
+        const ARTICLES = [
+            {
+                id: 'html-5',
+                category: 'Web Temelleri',
+                title: 'Semantik HTML5 ve SEO İlişkisi',
+                desc: 'Arama motorlarının sitenizi sevmesini sağlayacak yapısal etiketleme teknikleri.',
+                content: `
+                    <h2 class="text-2xl font-bold mb-4">Neden Semantik Yapı?</h2>
+                    <p class="mb-6 text-gray-600">Semantik HTML, içeriğin sadece görünüşünü değil, anlamını da tarayıcılara ve arama motorlarına iletir.</p>
+                    <pre class="mb-6">&lt;main&gt;\n  &lt;article&gt;\n    &lt;header&gt;Başlık&lt;/header&gt;\n    &lt;p&gt;İçerik...&lt;/p&gt;\n  &lt;/article&gt;\n&lt;/main&gt;</pre>
+                    <p class="text-gray-600">Bu yapı SEO puanınızı %30'a kadar artırabilir.</p>
+                `
+            },
+            {
+                id: 'js-async',
+                category: 'JavaScript',
+                title: 'Async/Await ile Modern Asenkron Yönetimi',
+                desc: 'Callback cehenneminden kurtulun ve temiz asenkron kod yazmayı öğrenin.',
+                content: `
+                    <h2 class="text-2xl font-bold mb-4">Async/Await Yapısı</h2>
+                    <p class="mb-6 text-gray-600">Promise yapılarını daha okunabilir hale getiren bu modern yöntem, hata yönetimini kolaylaştırır.</p>
+                    <pre class="mb-6">async function verileriGetir() {\n  try {\n    const response = await fetch('api/data');\n    const data = await response.json();\n    console.log(data);\n  } catch (err) {\n    console.error(err);\n  }\n}</pre>
+                `
+            },
+            {
+                id: 'css-grid',
+                category: 'Tasarım',
+                title: 'CSS Grid ile Kompleks Arayüz Tasarımı',
+                desc: 'Flexbox\'ın yetmediği yerde Grid devreye girer. İleri seviye layout teknikleri.',
+                content: `
+                    <h2 class="text-2xl font-bold mb-4">Grid Layout</h2>
+                    <p class="mb-6 text-gray-600">Satır ve sütunları aynı anda kontrol ederek 2 boyutlu tasarımlar yapın.</p>
+                    <pre class="mb-6">.container {\n  display: grid;\n  grid-template-columns: repeat(3, 1fr);\n  gap: 20px;\n}</pre>
+                `
+            },
+            {
+                id: 'react-hooks',
+                category: 'React',
+                title: 'Custom Hooks Yazma Sanatı',
+                desc: 'Kod tekrarını önlemek için kendi React Hook\'larınızı nasıl oluşturursunuz?',
+                content: `
+                    <h2 class="text-2xl font-bold mb-4">Reusability (Yeniden Kullanılabilirlik)</h2>
+                    <p class="mb-6 text-gray-600">Mantığı bileşenlerden ayırarak daha temiz bir mimari kurun.</p>
+                    <pre class="mb-6">function useLocalStorage(key) {\n  const [val, setVal] = useState(localStorage.getItem(key));\n  // ...mantık\n  return [val, setVal];\n}</pre>
+                `
+            }
+        ];
+
+        // 2. DURUM YÖNETİMİ
+        let state = {
+            user: JSON.parse(localStorage.getItem('ka_user')) || null,
+            view: 'home',
+            activeArticleId: null
+        };
+
+        // 3. AUTH İŞLEMLERİ
+        function handleCredentialResponse(response) {
+            const data = JSON.parse(atob(response.credential.split('.')[1]));
+            state.user = { name: data.name, pic: data.picture, email: data.email };
+            localStorage.setItem('ka_user', JSON.stringify(state.user));
+            render();
+        }
+
+        window.logout = () => {
+            state.user = null;
+            localStorage.removeItem('ka_user');
+            state.view = 'home';
+            render();
+        };
+
+        window.navigate = (view, id = null) => {
+            state.view = view;
+            state.activeArticleId = id;
+            window.scrollTo(0, 0);
+            render();
+        };
+
+        // 4. ANA RENDER
+        function render() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <nav class="glass sticky top-0 z-[100] h-20 border-b border-slate-200 px-8 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center space-x-3 cursor-pointer group" onclick="navigate('home')">
+                        <div class="bg-indigo-600 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <span class="text-xl font-black tracking-tighter uppercase text-slate-800">Kod Akademi</span>
+                    </div>
+
+                    <div class="flex items-center space-x-8">
+                        <div class="hidden md:flex space-x-6">
+                            <button onclick="navigate('home')" class="text-xs font-black uppercase tracking-widest ${state.view === 'home' ? 'text-indigo-600' : 'text-slate-400'}">Ana Sayfa</button>
+                            <button onclick="navigate('courses')" class="text-xs font-black uppercase tracking-widest ${state.view === 'courses' ? 'text-indigo-600' : 'text-slate-400'}">Makaleler</button>
+                        </div>
+
+                        <div id="auth-slot">
+                            ${state.user ? `
+                                <div class="flex items-center space-x-4 bg-slate-50 p-1.5 pr-4 rounded-full border border-slate-200">
+                                    <img src="${state.user.pic}" class="w-8 h-8 rounded-full border-2 border-white shadow-sm">
+                                    <div class="flex flex-col">
+                                        <span class="text-[9px] font-black text-indigo-500 uppercase leading-none">Üye</span>
+                                        <span class="text-xs font-bold text-slate-700">${state.user.name}</span>
+                                    </div>
+                                    <button onclick="logout()" class="text-slate-300 hover:text-red-500 transition ml-2"><i class="fas fa-sign-out-alt"></i></button>
+                                </div>
+                            ` : `
+                                <div id="g_btn_mount"></div>
+                            `}
+                        </div>
+                    </div>
+                </nav>
+
+                <main class="min-h-screen">
+                    ${renderView()}
+                </main>
+
+                <footer class="bg-slate-900 text-white py-12 mt-20 text-center">
+                    <p class="text-slate-500 text-xs font-bold uppercase tracking-[0.3em]">Kod Akademi &copy; 2026</p>
+                </footer>
+            `;
+
+            if (!state.user) {
+                google.accounts.id.initialize({
+                    client_id: "201423412904-fimbcausrqq2gslvgfr4jge8tgaf23k7.apps.googleusercontent.com",
+                    callback: handleCredentialResponse
+                });
+                google.accounts.id.renderButton(document.getElementById("g_btn_mount"), { theme: "outline", size: "medium", shape: "pill" });
+            }
+        }
+
+        function renderView() {
+            if (state.view === 'home') {
+                return `
+                    <section class="max-w-7xl mx-auto px-8 pt-24 text-center">
+                        <h1 class="text-7xl font-black text-slate-900 mb-8 tracking-tighter">Kodlamayı <span class="text-indigo-600">Derinden</span> Keşfet.</h1>
+                        <p class="text-xl text-slate-500 max-w-2xl mx-auto mb-12 font-medium">Türkiye'nin en kapsamlı yazılım makale kütüphanesi. Sadece üyelerimize özel, adım adım rehberler.</p>
+                        <div class="flex justify-center space-x-4">
+                            <button onclick="navigate('courses')" class="bg-indigo-600 text-white px-10 py-5 rounded-2xl font-black shadow-xl hover:bg-indigo-700 transition">Eğitimlere Göz At</button>
+                        </div>
+                    </section>
+                `;
+            }
+
+            if (state.view === 'courses') {
+                return `
+                    <section class="max-w-6xl mx-auto px-8 pt-20">
+                        <div class="mb-16">
+                            <h2 class="text-4xl font-black text-slate-900 mb-4">Tüm Eğitimler</h2>
+                            <p class="text-slate-500 font-medium">Giriş yaptığın için ${ARTICLES.length} farklı premium makaleye erişimin var.</p>
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-8">
+                            ${ARTICLES.map(article => `
+                                <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm course-card relative">
+                                    <span class="text-[10px] font-black uppercase text-indigo-500 tracking-widest mb-4 block">${article.category}</span>
+                                    <h3 class="text-2xl font-black mb-4 text-slate-800">${article.title}</h3>
+                                    <p class="text-slate-500 mb-8 text-sm leading-relaxed">${article.desc}</p>
+                                    
+                                    ${state.user ? `
+                                        <button onclick="navigate('article', '${article.id}')" class="text-indigo-600 font-black text-xs uppercase tracking-widest flex items-center group">
+                                            Makaleyi Oku <i class="fas fa-arrow-right ml-2 group-hover:ml-4 transition-all"></i>
+                                        </button>
+                                    ` : `
+                                        <div class="lock-overlay">
+                                            <i class="fas fa-lock text-indigo-600 text-2xl mb-3"></i>
+                                            <p class="font-black text-slate-800 text-xs uppercase">Premium İçerik</p>
+                                            <p class="text-[10px] text-slate-400 mt-1 italic uppercase">Giriş Yapmalısınız</p>
+                                        </div>
+                                    `}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </section>
+                `;
+            }
+
+            if (state.view === 'article') {
+                const article = ARTICLES.find(a => a.id === state.activeArticleId);
+                if (!state.user) return `<div class="text-center py-40 font-black text-red-500">YETKİSİZ ERİŞİM!</div>`;
+                
+                return `
+                    <section class="max-w-3xl mx-auto px-8 pt-16 animate-fade-in">
+                        <button onclick="navigate('courses')" class="text-xs font-black text-indigo-600 uppercase mb-10 flex items-center hover:opacity-70">
+                            <i class="fas fa-chevron-left mr-2"></i> Listeye Dön
+                        </button>
+                        
+                        <div class="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm">
+                            <span class="bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase mb-6 inline-block">
+                                ${article.category}
+                            </span>
+                            <h1 class="text-4xl font-black text-slate-900 mb-10 leading-tight">${article.title}</h1>
+                            
+                            <div class="prose prose-slate max-w-none text-slate-600 leading-loose">
+                                ${article.content}
+                            </div>
+                            
+                            <div class="mt-16 pt-10 border-t border-slate-100 flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <img src="${state.user.pic}" class="w-10 h-10 rounded-full border">
+                                    <span class="text-sm font-bold text-slate-400">Yazar: Kod Akademi Ekibi</span>
+                                </div>
+                                <button class="bg-slate-100 text-slate-500 p-3 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition">
+                                    <i class="fas fa-share-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+                `;
+            }
+        }
+
+        window.onload = render;
+    </script>
+</body>
+</html>
